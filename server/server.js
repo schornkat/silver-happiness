@@ -34,6 +34,10 @@ const middleware = [
 
 middleware.forEach((it) => server.use(it))
 
+server.get ('/hello', (req, res) => {
+  res.json ({message:'/Hello!'})  // localhost:8090/hello
+})
+
 server.use('/api/', (req, res) => {
   res.status(404)
   res.end()
