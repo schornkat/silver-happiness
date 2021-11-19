@@ -34,14 +34,72 @@ const middleware = [
 
 middleware.forEach((it) => server.use(it))
 
-server.get ('/hello', (req, res) => {
-  res.json ({message:'/Hello!'})  // localhost:8090/hello
+const fs = require('fs/promises')
+
+let taskList = []
+ fs.readFile(`${__dirname}/tasks.json`).then((tasks) => {
+ taskList = JSON.parse(tasks)
+}) ; 
+
+
+
+server.get('/api/task',async (req, res) => {
+  return res.status(200).json({
+    tasks: taskList
+  })
+});
+
+server.post('/api/tasks',async (req, res) => {
+  if (!req.body.name) {
+    return res.status(200).json({
+      addTask: ['Task has been added successfully'],
+      tasks: taskList
+    });
+  }
+  const task = {
+    id: taskList.length + 1,
+    isDone: req.body.isDone,
+    name: req.body.name,
+  };
+  taskList = [...taskList, task]
+  await fs.writeFile(`${__dirname}/tasks.json`, JSON.stringify(taskList))
+  return res.status(201).json({
+    message: 'Task has been added successfully',
+    tasks: taskList
+  })
+});
+
+server.delete('/api/task/:id',async (req, res) => {
+  if (!req.params.id) {
+    return res.status(200).json({
+      delTask: 'Task has been deleted successfully',
+
+    });
+  }
+  const taskId = Number(req.params.id)
+  const tasks = taskList.filter((task) => {
+    return task.id !== taskId
+  });
+  taskList = tasks;
+  await fs.writeFile(`${__dirname}/tasks.json`, JSON.stringify(tasks))
+  return res.status(200).json({
+    tasks,
+  });
 })
 
-server.use('/api/', (req, res) => {
-  res.status(404)
-  res.end()
-})
+server.put('/api/task/:id',async (req, res) => {
+  const newTaskId = +req.params.id;
+  taskList = taskList.map((oldTask) => {
+    return oldTask.id === newTaskId ? { ...oldTask, isDone: true } : oldTask
+  })
+  await fs.writeFile(`${__dirname}/tasks.json`, JSON.stringify(taskList))
+  return res.status(200).json({
+    task: taskList,
+    isDone: true
+
+  })
+});
+
 
 const [htmlStart, htmlEnd] = Html({
   body: 'separator',
@@ -74,7 +132,7 @@ if (config.isSocketsEnabled) {
   const echo = sockjs.createServer()
   echo.on('connection', (conn) => {
     connections.push(conn)
-    conn.on('data', async () => {})
+    conn.on('data', async () => { })
 
     conn.on('close', () => {
       connections = connections.filter((c) => c.readyState !== 3)
